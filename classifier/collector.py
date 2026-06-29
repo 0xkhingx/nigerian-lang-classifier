@@ -1,6 +1,7 @@
-"""Collect sentences from Wikipedia for each language."""
+"""Collect sentences from Wikipedia, public datasets, and embedded samples."""
 
 import re
+import csv
 import urllib.request
 import urllib.error
 import json
@@ -9,15 +10,14 @@ from pathlib import Path
 from data.sample_sentences import SENTENCES
 
 WIKI_API = "https://{lang}.wikipedia.org/w/api.php"
-
 LANG_CODES = {"en": "en", "yo": "yo", "ig": "ig", "ha": "ha"}
+DATA_DIR = Path(__file__).parent.parent / "data"
+
 
 def fetch_wikipedia_sentences(lang: str, limit: int = 200) -> list[str]:
     """Fetch sentences from Wikipedia for a given language."""
     code = LANG_CODES.get(lang, lang)
     api = WIKI_API.format(lang=code)
-
-    # Get random article titles
     params = (
         "?action=query"
         "&format=json"
@@ -63,6 +63,51 @@ def fetch_wikipedia_sentences(lang: str, limit: int = 200) -> list[str]:
     return sentences[:limit]
 
 
+def load_jw300(lang: str, target: int = 200) -> list[str]:
+    """Load from JW300 parallel corpus: data/raw/jw300/en-{lang}.txt"""
+    path = DATA_DIR / "raw" / "jw300" / f"en-{lang}.txt"
+    if not path.exists():
+        return []
+    sentences = []
+    with open(path, "r", encoding="utf-8") as f:
+        for line in f:
+            parts = line.strip().split("\t")
+            if len(parts) == 2:
+                sentences.append(parts[1])
+    return extract_sentences(" ".join(sentences))[:target]
+
+
+def load_naijasenti(lang: str, target: int = 200) -> list[str]:
+    """Load from NaijaSenti CSV: data/raw/naijasenti/{lang}.csv"""
+    code = {"yo": "yoruba", "ig": "igbo", "ha": "hausa", "en": "english", "pcm": "pidgin"}.get(lang, lang)
+    path = DATA_DIR / "raw" / "naijasenti" / f"{code}.csv"
+    if not path.exists():
+        return []
+    sentences = []
+    with open(path, "r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            tweet = row.get("tweet", row.get("text", "")).strip()
+            if 10 < len(tweet) < 300:
+                sentences.append(tweet)
+    return sentences[:target]
+
+
+def load_local_txt(lang: str, target: int = 200) -> list[str]:
+    """Load from data/raw/{lang}/*.txt (one sentence per line)."""
+    dir_path = DATA_DIR / "raw" / lang
+    if not dir_path.exists():
+        return []
+    sentences = []
+    for txt_file in sorted(dir_path.glob("*.txt")):
+        with open(txt_file, "r", encoding="utf-8") as f:
+            for line in f:
+                s = line.strip()
+                if 10 < len(s) < 300:
+                    sentences.append(s)
+    return sentences[:target]
+
+
 def extract_sentences(text: str) -> list[str]:
     """Split text into clean sentences."""
     text = re.sub(r"\s+", " ", text).strip()
@@ -76,13 +121,26 @@ def extract_sentences(text: str) -> list[str]:
 
 
 def collect_all(target: int = 200) -> dict[str, list[str]]:
-    """Collect sentences for all four languages. Falls back to samples."""
+    """Collect sentences for all four languages.
+
+    Priority:
+      1. NaijaSenti CSV in data/raw/naijasenti/
+      2. JW300 parallel text in data/raw/jw300/
+      3. Plain .txt files in data/raw/{lang}/
+      4. Wikipedia live API
+      5. Embedded sample sentences (fallback)
+    """
     data: dict[str, list[str]] = {}
     for lang in ["en", "yo", "ig", "ha"]:
-        sentences = fetch_wikipedia_sentences(lang, target)
+        sentences = load_naijasenti(lang, target)
+        if len(sentences) < target:
+            sentences.extend(load_jw300(lang, target - len(sentences)))
+        if len(sentences) < target:
+            sentences.extend(load_local_txt(lang, target - len(sentences)))
+        if len(sentences) < target:
+            sentences.extend(fetch_wikipedia_sentences(lang, target - len(sentences)))
         if len(sentences) < target:
             fallback = SENTENCES.get(lang, [])
-            needed = target - len(sentences)
-            sentences.extend(fallback[:needed])
+            sentences.extend(fallback[: target - len(sentences)])
         data[lang] = sentences[:target]
     return data

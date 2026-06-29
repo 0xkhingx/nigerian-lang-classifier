@@ -2,7 +2,7 @@
 
 Detects **English**, **Yoruba**, **Igbo**, and **Hausa** from text.
 
-97.8% accuracy across 4 languages.
+97.8% accuracy on clean held-out test sentences.
 
 ## Why it exists
 
@@ -26,14 +26,52 @@ clf.predict("Yaya dai?")              # "Hausa"
 clf.predict("How is the weather?")    # "English"
 ```
 
-## Results
+## Datasets
 
-| Language   | Precision | Recall | F1-score |
-|-----------|-----------|--------|----------|
-| English   | 100%      | 100%   | 1.00     |
-| Yoruba    | 94%       | 97%    | 0.95     |
-| Igbo      | 100%      | 97%    | 0.98     |
-| Hausa     | 97%       | 97%    | 0.97     |
+The collector auto-loads whatever it can find, in priority order:
+
+| Dataset | Languages | Type | Source |
+|---------|-----------|------|--------|
+| NaijaSenti | yo, ig, ha, en, pcm | Real tweets | [github.com/hausanlp/NaijaSenti](https://github.com/hausanlp/NaijaSenti) |
+| JW300 | yo, ig, ha | Clean parallel text | [opus.nlpl.eu/JW300.php](https://opus.nlpl.eu/JW300.php) |
+| Wikipedia API | yo, ig, ha, en | Random articles | live API |
+| Embedded samples | yo, ig, ha, en | Hand-curated | ships with repo |
+
+Place downloaded files in `data/raw/` — the collector picks them up automatically:
+
+```
+data/raw/
+├── naijasenti/          # CSV files: yoruba.csv, igbo.csv, hausa.csv, english.csv, pidgin.csv
+├── jw300/               # TXT files: en-yo.txt, en-ig.txt, en-ha.txt
+├── yo/                  # Any .txt files, one sentence per line
+├── ig/
+└── ha/
+```
+
+Run `python download_datasets.py` for download URLs and instructions.
+
+## Accuracy
+
+98% on clean, well-formed sentences (held-out test set).
+
+### Real-world performance
+
+| Input type | Works? |
+|---|---|
+| Clean English | ~86% confidence |
+| Yoruba (no diacritics) | ~84% confidence |
+| Yoruba (with diacritics) | improving |
+| Igbo (no diacritics) | ~74% confidence |
+| Hausa | ~63% confidence |
+| Pidgin English | not supported yet |
+| Very short text (<3 words) | unreliable |
+
+### Known limitations
+
+- Real Yoruba text with full tonal marks (ẹ, ọ, ṣ) needs more training data
+- Pidgin English is not yet a supported class
+- Inputs under 5 words produce unreliable results
+- Code-switching (mixed-language sentences) not handled
 
 ## How it works
 
@@ -45,11 +83,9 @@ Char n-grams outperform word-level on morphologically rich languages like Yoruba
 text → char n-grams → TF-IDF vectorize → Logistic Regression → prediction
 ```
 
-## Extend it
+## What's next
 
-- Add Pidgin English
-- Add Efik, Tiv, Ijaw
-- Fine-tune on domain-specific text
-- Swap in an MLP or FastText for higher accuracy
-
-**Push it to GitHub today. That's step one.**
+- [ ] Add Pidgin English as a fifth class
+- [ ] Expand diacritic-heavy training data for Yoruba/Igbo
+- [ ] Wrap in FastAPI endpoint
+- [ ] Deploy interactive demo to Hugging Face Spaces
