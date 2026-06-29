@@ -78,14 +78,17 @@ def load_jw300(lang: str, target: int = 200) -> list[str]:
 
 
 def load_naijasenti(lang: str, target: int = 200) -> list[str]:
-    """Load from NaijaSenti CSV: data/raw/naijasenti/{lang}.csv"""
-    code = {"yo": "yoruba", "ig": "igbo", "ha": "hausa", "en": "english", "pcm": "pidgin"}.get(lang, lang)
-    path = DATA_DIR / "raw" / "naijasenti" / f"{code}.csv"
+    """Load from NaijaSenti data: data/raw/naijasenti/{lang}.tsv or .csv"""
+    code = {"yo": "yor", "ig": "ibo", "ha": "hau", "en": "en", "pcm": "pcm"}.get(lang, lang)
+    base = DATA_DIR / "raw" / "naijasenti"
+    path = base / f"{code}.tsv"
+    if not path.exists():
+        path = base / f"{code}.csv"
     if not path.exists():
         return []
     sentences = []
     with open(path, "r", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
+        reader = csv.DictReader(f, delimiter="\t")
         for row in reader:
             tweet = row.get("tweet", row.get("text", "")).strip()
             if 10 < len(tweet) < 300:
