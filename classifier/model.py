@@ -9,7 +9,7 @@ MODEL_PATH = Path(__file__).parent.parent / "model.pkl"
 
 
 class NigerianLangClassifier:
-    """Classify text as English, Yoruba, Igbo, or Hausa.
+    """Classify text as English, Yoruba, Igbo, Hausa, or Pidgin.
 
     Usage:
         clf = NigerianLangClassifier()
@@ -17,6 +17,7 @@ class NigerianLangClassifier:
         clf.predict("Bawo ni o se wa?")       # "Yoruba"
         clf.predict("Kedu ka ị mere?")        # "Igbo"
         clf.predict("Yaya dai?")              # "Hausa"
+        clf.predict("How you dey?")           # "Pidgin"
     """
 
     def __init__(self, model_path: str | Path | None = None):

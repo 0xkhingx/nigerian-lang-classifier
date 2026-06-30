@@ -5,3 +5,4 @@ model.pkl
 .env
 venv/
 .venv/
+# data/raw/  -- uncomment to ignore downloaded datasets

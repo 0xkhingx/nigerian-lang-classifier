@@ -1,8 +1,8 @@
 # Nigerian Language Classifier
 
-Detects **English**, **Yoruba**, **Igbo**, and **Hausa** from text.
+Detects **English**, **Yoruba**, **Igbo**, **Hausa**, and **Pidgin** from text.
 
-97.8% accuracy on clean held-out test sentences.
+**99.4% accuracy** on held-out test set (64k+ training sentences).
 
 ## Why it exists
 
@@ -11,7 +11,7 @@ Most NLP tools ignore Nigerian languages. This is a small fix.
 ## Quick start
 
 ```bash
-pip install scikit-learn nltk
+pip install scikit-learn
 python train.py
 python demo.py
 ```
@@ -23,6 +23,7 @@ clf = NigerianLangClassifier()
 clf.predict("Bawo ni o se wa?")       # "Yoruba"
 clf.predict("Kedu ka ị mere?")        # "Igbo"
 clf.predict("Yaya dai?")              # "Hausa"
+clf.predict("How you dey?")           # "Pidgin"
 clf.predict("How is the weather?")    # "English"
 ```
 
@@ -32,18 +33,20 @@ The collector auto-loads whatever it can find, in priority order:
 
 | Dataset | Languages | Type | Source |
 |---------|-----------|------|--------|
-| NaijaSenti | yo, ig, ha, en, pcm | Real tweets | [github.com/hausanlp/NaijaSenti](https://github.com/hausanlp/NaijaSenti) |
+| NaijaSenti | yo, ig, ha, pcm | Real tweets | [github.com/hausanlp/NaijaSenti](https://github.com/hausanlp/NaijaSenti) |
 | JW300 | yo, ig, ha | Clean parallel text | [opus.nlpl.eu/JW300.php](https://opus.nlpl.eu/JW300.php) |
-| Wikipedia API | yo, ig, ha, en | Random articles | live API |
-| Embedded samples | yo, ig, ha, en | Hand-curated | ships with repo |
+| Wikipedia API | en, yo, ig, ha | Random articles | live API |
+| Gutenberg corpus | en | Books | NLTK |
+| Embedded samples | en, yo, ig, ha | Hand-curated | ships with repo |
 
 Place downloaded files in `data/raw/` — the collector picks them up automatically:
 
 ```
 data/raw/
-├── naijasenti/          # CSV files: yoruba.csv, igbo.csv, hausa.csv, english.csv, pidgin.csv
+├── naijasenti/{yor,ibo,hau,pcm}/{train,dev,test}.tsv
 ├── jw300/               # TXT files: en-yo.txt, en-ig.txt, en-ha.txt
-├── yo/                  # Any .txt files, one sentence per line
+├── en/                  # Any .txt files, one sentence per line
+├── yo/
 ├── ig/
 └── ha/
 ```
@@ -52,26 +55,26 @@ Run `python download_datasets.py` for download URLs and instructions.
 
 ## Accuracy
 
-98% on clean, well-formed sentences (held-out test set).
+99.4% on held-out test set (64k+ sentences across 5 languages).
 
 ### Real-world performance
 
 | Input type | Works? |
 |---|---|
-| Clean English | ~86% confidence |
-| Yoruba (no diacritics) | ~84% confidence |
-| Yoruba (with diacritics) | improving |
-| Igbo (no diacritics) | ~74% confidence |
-| Hausa | ~63% confidence |
-| Pidgin English | not supported yet |
+| Clean English | ~95% confidence |
+| Yoruba (no diacritics) | ~89% confidence |
+| Yoruba (with diacritics) | ~97% confidence |
+| Igbo | ~91% confidence |
+| Hausa | ~97% confidence |
+| Pidgin | ~82% confidence |
 | Very short text (<3 words) | unreliable |
 
 ### Known limitations
 
-- Real Yoruba text with full tonal marks (ẹ, ọ, ṣ) needs more training data
-- Pidgin English is not yet a supported class
+- Pidgin has less training data than other languages
 - Inputs under 5 words produce unreliable results
 - Code-switching (mixed-language sentences) not handled
+- English data relies on books and Wikipedia, not social media
 
 ## How it works
 
@@ -85,7 +88,7 @@ text → char n-grams → TF-IDF vectorize → Logistic Regression → predictio
 
 ## What's next
 
-- [ ] Add Pidgin English as a fifth class
+- [ ] Expand Pidgin training data
 - [ ] Expand diacritic-heavy training data for Yoruba/Igbo
 - [ ] Wrap in FastAPI endpoint
 - [ ] Deploy interactive demo to Hugging Face Spaces

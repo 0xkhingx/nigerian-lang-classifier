@@ -8,6 +8,7 @@ LANG_FLAGS = {
     "Yoruba": "🇳🇬",
     "Igbo": "🇳🇬",
     "Hausa": "🇳🇬",
+    "Pidgin": "🇳🇬",
 }
 
 def classify(text):
@@ -22,22 +23,22 @@ demo = gr.Interface(
     fn=classify,
     inputs=gr.Textbox(
         lines=3,
-        placeholder="Paste text in English, Yoruba, Igbo, or Hausa...",
+        placeholder="Paste text in English, Yoruba, Igbo, Hausa, or Pidgin...",
         label="Input Text"
     ),
     outputs=[
         gr.Text(label="Detected Language"),
-        gr.Label(label="Confidence", num_top_classes=4)
+        gr.Label(label="Confidence", num_top_classes=5)
     ],
     title="🇳🇬 Nigerian Language Classifier",
-    description="Detects English, Yoruba, Igbo, and Hausa from text. "
+    description="Detects English, Yoruba, Igbo, Hausa, and Pidgin from text. "
                 "Built with character n-grams + TF-IDF + Logistic Regression.",
     examples=[
         ["How are you doing today?"],
         ["Bawo ni o se wa?"],
         ["Kedu ka i mere?"],
         ["Ina zuwa makaranta."],
-        ["The president addressed the national assembly."],
+        ["How you dey? Wetin dey happen?"],
         ["Mo nlo si ile iwe losi."],
     ],
 )

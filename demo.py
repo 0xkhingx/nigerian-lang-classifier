@@ -10,10 +10,12 @@ tests = [
     ("Bawo ni o se wa?", "Yoruba"),
     ("Kedu ka ị mere?", "Igbo"),
     ("Yaya dai?", "Hausa"),
+    ("How you dey? Wetin dey happen?", "Pidgin"),
     ("The president gave a speech at the national assembly.", "English"),
     ("Mo nlo si ile iwe losi.", "Yoruba"),
     ("M na-aga ụlọ akwụkwọ.", "Igbo"),
     ("Ina zuwa makaranta.", "Hausa"),
+    ("Dem go cook am for party.", "Pidgin"),
 ]
 for text, expected in tests:
     result = clf.predict(text)

@@ -6,9 +6,10 @@ import pickle
 import time
 from pathlib import Path
 
-# Simulate a fresh import from outside the project dir
-sys.path.insert(0, r"C:\Users\HP\nigerian-lang-classifier")
-os.chdir(os.path.dirname(os.path.abspath(__file__)))  # back to project dir for model.pkl
+# Ensure project root is on path regardless of where we run from
+PROJECT_ROOT = Path(__file__).resolve().parent
+sys.path.insert(0, str(PROJECT_ROOT))
+os.chdir(str(PROJECT_ROOT))
 
 from classifier import NigerianLangClassifier
 
@@ -25,6 +26,7 @@ tests = [
     "Bawo ni o se wa?",
     "Kedu ka i mere?",
     "Yaya dai?",
+    "How you dey? Wetin dey happen?",
 ]
 for t in tests:
     print(clf.predict(t), "-", t)

@@ -5,9 +5,6 @@ import string
 import pickle
 from pathlib import Path
 
-import nltk
-from nltk.corpus import stopwords
-
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
@@ -16,15 +13,10 @@ from sklearn.metrics import classification_report
 
 from .collector import collect_all
 
-LANG_NAMES = {"en": "English", "yo": "Yoruba", "ig": "Igbo", "ha": "Hausa"}
-
-try:
-    nltk.data.find("corpora/stopwords")
-except LookupError:
-    nltk.download("stopwords", quiet=True)
+LANG_NAMES = {"en": "English", "yo": "Yoruba", "ig": "Igbo", "ha": "Hausa", "pcm": "Pidgin"}
 
 
-def clean_text(text: str, lang: str | None = None) -> str:
+def clean_text(text: str) -> str:
     """Basic text cleaning."""
     text = text.lower()
     text = re.sub(r"[{}]".format(re.escape(string.punctuation)), " ", text)
@@ -39,7 +31,7 @@ def prepare_data(target_per_lang: int = 200) -> tuple[list[str], list[str]]:
     texts, labels = [], []
     for code, sentences in raw.items():
         for sent in sentences:
-            texts.append(clean_text(sent, code))
+            texts.append(clean_text(sent))
             labels.append(LANG_NAMES[code])
     return texts, labels
 

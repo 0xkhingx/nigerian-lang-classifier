@@ -8,32 +8,31 @@ Usage:
 
 import argparse
 import urllib.request
-import zipfile
 from pathlib import Path
 
 DATA_DIR = Path(__file__).parent / "data" / "raw"
 
-URLS = {
-    "naijasenti": "https://raw.githubusercontent.com/hausanlp/NaijaSenti/main/data/sentiment/en-twitter.zip",
-    # "jw300": "https://object.pouta.csc.fi/OPUS-JW300/v1/tmx/en-yo.tmx.gz",
+NAIJASENTI_BASE = "https://raw.githubusercontent.com/hausanlp/NaijaSenti/main/data/annotated_tweets"
+NAIJASENTI_LANGS = {
+    "yor": ["train", "dev", "test"],
+    "ibo": ["train", "dev", "test"],
+    "hau": ["train", "dev", "test"],
+    "pcm": ["train", "dev", "test"],
 }
 
 INSTRUCTIONS = """
-────────────────────────────────────────────────────────────────
+-----------------------------------------------------------------
   Download public datasets to data/raw/
-────────────────────────────────────────────────────────────────
+-----------------------------------------------------------------
 
-  NaijaSenti (RECOMMENDED — real tweets, all 4 langs + Pidgin)
-    https://github.com/hausanlp/NaijaSenti
-    Download CSV files from data/sentiment/ directory
-    Place in: data/raw/naijasenti/
-      yoruba.csv  igbo.csv  hausa.csv  english.csv  pidgin.csv
+  NaijaSenti (RECOMMENDED -- real tweets, all langs + Pidgin)
+    python download_datasets.py --all
+    Downloads train/dev/test TSVs for yor, ibo, hau, pcm
 
   JW300 (clean parallel Bible text with full diacritics)
     https://opus.nlpl.eu/JW300.php
     Download en-yo.txt, en-ig.txt, en-ha.txt
     Place in: data/raw/jw300/
-      en-yo.txt  en-ig.txt  en-ha.txt
 
   Masakhane News
     https://github.com/masakhane-io/masakhane-news
@@ -43,10 +42,26 @@ INSTRUCTIONS = """
     Any .txt in data/raw/{lang}/ with one sentence per line
     is auto-loaded on next train.
 
-────────────────────────────────────────────────────────────────
-  After downloading: python train.py --samples 1000
-────────────────────────────────────────────────────────────────
+-----------------------------------------------------------------
+  After downloading: python train.py --samples 15000
+-----------------------------------------------------------------
 """
+
+
+def download_naijasenti():
+    """Download NaijaSenti annotated tweets for all available languages."""
+    for code, splits in NAIJASENTI_LANGS.items():
+        for split in splits:
+            url = f"{NAIJASENTI_BASE}/{code}/{split}.tsv"
+            dest_dir = DATA_DIR / "naijasenti" / code
+            dest_dir.mkdir(parents=True, exist_ok=True)
+            dest = dest_dir / f"{split}.tsv"
+            print(f"Downloading {code}/{split}.tsv...")
+            try:
+                urllib.request.urlretrieve(url, dest)
+                print(f"  -> {dest}")
+            except Exception as e:
+                print(f"  FAILED: {e}")
 
 
 def main():
@@ -58,17 +73,7 @@ def main():
 
     if args.all:
         DATA_DIR.mkdir(parents=True, exist_ok=True)
-        for name, url in URLS.items():
-            dest = DATA_DIR / f"{name}.zip"
-            print(f"Downloading {name} from {url}...")
-            try:
-                urllib.request.urlretrieve(url, dest)
-                with zipfile.ZipFile(dest, "r") as z:
-                    z.extractall(DATA_DIR / name)
-                dest.unlink()
-                print(f"  ✓ {name} extracted to data/raw/{name}/")
-            except Exception as e:
-                print(f"  ✗ {name} failed: {e}")
+        download_naijasenti()
 
 
 if __name__ == "__main__":

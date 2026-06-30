@@ -18,47 +18,53 @@ def fetch_wikipedia_sentences(lang: str, limit: int = 200) -> list[str]:
     """Fetch sentences from Wikipedia for a given language."""
     code = LANG_CODES.get(lang, lang)
     api = WIKI_API.format(lang=code)
-    params = (
-        "?action=query"
-        "&format=json"
-        "&list=random"
-        "&rnlimit=20"
-        "&rnnamespace=0"
-    )
-    try:
-        req = urllib.request.Request(api + params, headers={"User-Agent": "NigerianLangClassifier/1.0"})
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            data = json.loads(resp.read().decode())
-    except Exception:
-        return []
-
-    titles = [p["title"] for p in data.get("query", {}).get("random", [])]
     sentences: list[str] = []
 
-    for title in titles:
-        if len(sentences) >= limit:
-            break
+    # Fetch in batches of 50 random articles until we have enough
+    batch_size = min(50, limit)
+    while len(sentences) < limit:
         params = (
             "?action=query"
             "&format=json"
-            "&titles=" + urllib.request.quote(title) +
-            "&prop=extracts"
-            "&explaintext=1"
-            "&exsectionformat=plain"
-            "&exlimit=1"
+            "&list=random"
+            f"&rnlimit={batch_size}"
+            "&rnnamespace=0"
         )
         try:
             req = urllib.request.Request(api + params, headers={"User-Agent": "NigerianLangClassifier/1.0"})
             with urllib.request.urlopen(req, timeout=10) as resp:
                 data = json.loads(resp.read().decode())
         except Exception:
-            continue
+            break
 
-        pages = data.get("query", {}).get("pages", {})
-        for page in pages.values():
-            text = page.get("extract", "")
-            extracted = extract_sentences(text)
-            sentences.extend(extracted)
+        titles = [p["title"] for p in data.get("query", {}).get("random", [])]
+        if not titles:
+            break
+
+        for title in titles:
+            if len(sentences) >= limit:
+                break
+            params = (
+                "?action=query"
+                "&format=json"
+                "&titles=" + urllib.request.quote(title) +
+                "&prop=extracts"
+                "&explaintext=1"
+                "&exsectionformat=plain"
+                "&exlimit=1"
+            )
+            try:
+                req = urllib.request.Request(api + params, headers={"User-Agent": "NigerianLangClassifier/1.0"})
+                with urllib.request.urlopen(req, timeout=10) as resp:
+                    data = json.loads(resp.read().decode())
+            except Exception:
+                continue
+
+            pages = data.get("query", {}).get("pages", {})
+            for page in pages.values():
+                text = page.get("extract", "")
+                extracted = extract_sentences(text)
+                sentences.extend(extracted)
 
     return sentences[:limit]
 
@@ -77,15 +83,8 @@ def load_jw300(lang: str, target: int = 200) -> list[str]:
     return extract_sentences(" ".join(sentences))[:target]
 
 
-def load_naijasenti(lang: str, target: int = 200) -> list[str]:
-    """Load from NaijaSenti data: data/raw/naijasenti/{lang}.tsv or .csv"""
-    code = {"yo": "yor", "ig": "ibo", "ha": "hau", "en": "en", "pcm": "pcm"}.get(lang, lang)
-    base = DATA_DIR / "raw" / "naijasenti"
-    path = base / f"{code}.tsv"
-    if not path.exists():
-        path = base / f"{code}.csv"
-    if not path.exists():
-        return []
+def _read_tsv(path: Path) -> list[str]:
+    """Read tweets from a NaijaSenti TSV file."""
     sentences = []
     with open(path, "r", encoding="utf-8") as f:
         reader = csv.DictReader(f, delimiter="\t")
@@ -93,6 +92,36 @@ def load_naijasenti(lang: str, target: int = 200) -> list[str]:
             tweet = row.get("tweet", row.get("text", "")).strip()
             if 10 < len(tweet) < 300:
                 sentences.append(tweet)
+    return sentences
+
+
+def load_naijasenti(lang: str, target: int = 200) -> list[str]:
+    """Load from NaijaSenti data.
+
+    Tries (in order):
+      1. New structure: data/raw/naijasenti/{code}/{train,dev,test}.tsv
+      2. Old structure: data/raw/naijasenti/{code}.tsv
+      3. Old structure: data/raw/naijasenti/{code}.csv
+    """
+    code = {"yo": "yor", "ig": "ibo", "ha": "hau", "en": "en", "pcm": "pcm"}.get(lang, lang)
+    base = DATA_DIR / "raw" / "naijasenti"
+    sentences: list[str] = []
+
+    # New structure: language subdirectory with train/dev/test splits
+    lang_dir = base / code
+    if lang_dir.is_dir():
+        for split in ("train", "dev", "test"):
+            split_file = lang_dir / f"{split}.tsv"
+            if split_file.exists():
+                sentences.extend(_read_tsv(split_file))
+
+    # Old structure: flat file (also load if new structure was partial)
+    path = base / f"{code}.tsv"
+    if not path.exists():
+        path = base / f"{code}.csv"
+    if path.exists():
+        sentences.extend(_read_tsv(path))
+
     return sentences[:target]
 
 
@@ -123,18 +152,21 @@ def extract_sentences(text: str) -> list[str]:
     return cleaned
 
 
-def collect_all(target: int = 200) -> dict[str, list[str]]:
-    """Collect sentences for all four languages.
+def collect_all(target: int = 200, include_pidgin: bool = True) -> dict[str, list[str]]:
+    """Collect sentences for all supported languages.
 
     Priority:
-      1. NaijaSenti CSV in data/raw/naijasenti/
+      1. NaijaSenti data in data/raw/naijasenti/
       2. JW300 parallel text in data/raw/jw300/
       3. Plain .txt files in data/raw/{lang}/
       4. Wikipedia live API
       5. Embedded sample sentences (fallback)
     """
+    langs = ["en", "yo", "ig", "ha"]
+    if include_pidgin:
+        langs.append("pcm")
     data: dict[str, list[str]] = {}
-    for lang in ["en", "yo", "ig", "ha"]:
+    for lang in langs:
         sentences = load_naijasenti(lang, target)
         if len(sentences) < target:
             sentences.extend(load_jw300(lang, target - len(sentences)))
