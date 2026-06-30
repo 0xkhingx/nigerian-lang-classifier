@@ -82,7 +82,7 @@ real_world = [
     ("E kaabo si ile wa", "Yoruba"),
     ("O bu ihe oma", "Igbo"),
     ("Allah ya kiyaye", "Hausa"),
-    ("Nigeria go dey alright", "?"),  # Pidgin
+    ("Nigeria go dey alright", "Pidgin"),
 ]
 for text, expected in real_world:
     pred = clf.predict(text)
